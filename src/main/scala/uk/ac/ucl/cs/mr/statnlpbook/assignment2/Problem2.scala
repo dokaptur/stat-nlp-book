@@ -24,8 +24,36 @@ object Problem2 {
                                predict: (X, Weights) => Y,
                                iterations: Int = 2,
                                learningRate: Double = 1.0): Weights = {
-    //TODO implement the averaged perceptron trainer
-    ???
+    // init weights
+    val weights = new mutable.HashMap[FeatureKey, Double]().withDefaultValue(0.0)
+    val weightsAvg = new mutable.HashMap[FeatureKey, Double]().withDefaultValue(0.0)
+
+    // iterate
+    var counter = 0
+    for (i <- 0 until iterations) {
+      for (inst <- instances) {
+        val result = predict(inst._1, weights)
+        if (!result.equals(inst._2)) {
+          val trueFeatures = feat(inst._1, inst._2)
+          val resultFeatures = feat(inst._1, result)
+          for (k <- trueFeatures.keys) {
+            weights(k) += learningRate * trueFeatures(k)
+          }
+          for (k <- resultFeatures.keys) {
+            weights(k) -= learningRate * resultFeatures(k)
+          }
+        }
+
+        for (i <- weights.keys) {
+          weightsAvg(i) += weights(i)
+        }
+        counter += 1
+      }
+    }
+    for (i <- weightsAvg.keys) {
+      weightsAvg(i) /= counter
+    }
+    weightsAvg
   }
 
 
