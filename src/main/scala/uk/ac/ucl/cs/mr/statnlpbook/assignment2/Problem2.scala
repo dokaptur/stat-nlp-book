@@ -7,7 +7,6 @@ import scala.collection.mutable
  */
 object Problem2 {
 
-
   /**
    * Train a linear model using the average perceptron algorithm.
    * @param instances the training instances.
@@ -28,8 +27,7 @@ object Problem2 {
     val weights = new mutable.HashMap[FeatureKey, Double]().withDefaultValue(0.0)
     val weightsAvg = new mutable.HashMap[FeatureKey, Double]().withDefaultValue(0.0)
 
-    // iterate
-    var counter = 0
+    var counter = 1
     for (i <- 0 until iterations) {
       for (inst <- instances) {
         val result = predict(inst._1, weights)
@@ -38,20 +36,19 @@ object Problem2 {
           val resultFeatures = feat(inst._1, result)
           for (k <- trueFeatures.keys) {
             weights(k) += learningRate * trueFeatures(k)
+            weightsAvg(k) +=  counter*learningRate * trueFeatures(k)
           }
           for (k <- resultFeatures.keys) {
             weights(k) -= learningRate * resultFeatures(k)
+            weightsAvg(k) -=  counter*learningRate * resultFeatures(k)
           }
         }
-
-        for (i <- weights.keys) {
-          weightsAvg(i) += weights(i)
-        }
-        counter += 1
+        else
+          counter += 1
       }
     }
     for (i <- weightsAvg.keys) {
-      weightsAvg(i) /= counter
+      weightsAvg(i) = weights(i) - weightsAvg(i) / counter
     }
     weightsAvg
   }
