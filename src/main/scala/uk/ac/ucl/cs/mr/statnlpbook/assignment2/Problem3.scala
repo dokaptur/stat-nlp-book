@@ -40,7 +40,7 @@ object Problem3Triggers {
 
     // define model
     //TODO: change the features function to explore different types of features
-    val triggerModel = SimpleClassifier(triggerLabels, Features.defaultTriggerFeatures)
+    val triggerModel = SimpleClassifier(triggerLabels, Features.myTriggerFeatures)
 
     // use training algorithm to get weights of model
     //TODO: change the trainer to explore different training algorithms
