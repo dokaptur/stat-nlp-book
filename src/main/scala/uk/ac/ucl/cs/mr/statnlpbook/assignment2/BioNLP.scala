@@ -162,7 +162,7 @@ object JsonReader {
     jsons.map(f => parseDocument(f))
   }
 
-  private def getAllJsonFiles(dir: String) = new File(dir).listFiles().filter(_.getName().endsWith(".json")).toSeq
+  private def getAllJsonFiles(dir: String) = new File(dir).listFiles().sorted.filter(_.getName().endsWith(".json")).toSeq
 
   private def parseDocument(f: File): Document = {
     val json = readJson(f)
