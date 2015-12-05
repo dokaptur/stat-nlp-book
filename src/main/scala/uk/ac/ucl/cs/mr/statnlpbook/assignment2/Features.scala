@@ -60,36 +60,30 @@ object Features {
 
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
+    feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0 //word stem feature
+    feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
 
-//    if (begin > 0) {
-//      val before = thisSentence.tokens(begin-1)
-//      feats += FeatureKey("bigram before", List(before.word, token.word, y)) -> 1.0 //word feature
-//    }
-//
-
-    if (thisSentence.tokens.length > end + 2) {
-      val isProtein = thisSentence.mentions.map(_.begin).contains(end+2)
-      feats += FeatureKey("protein after", List(isProtein.toString, y)) -> 1.0 //word feature
+    if (begin > 0) {
+      val before = thisSentence.tokens(begin-1)
+      feats += FeatureKey("bigram before", List(before.word, token.word, y)) -> 1.0
     }
-//
-//    feats += FeatureKey("first trigger pos", List(token.pos, y)) -> 1.0
-//
-//    val mentions = thisSentence.mentions.filter(m => {
-//      (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
-//    }).map(m => m.label)
-//    feats += FeatureKey("mention in sentence", List(mentions + y)) -> 1.0
-//
-//    mentions.foreach(m => {
-//      feats += FeatureKey("mention in sentence", List(m, y)) -> 1.0
-//    })
-//
-//    val deps = thisSentence.deps.filter(d => {
-//      d.head == begin
-//    }).map(d => d.label)
-//
-//    deps.foreach(d => {
-//      feats += FeatureKey("dependancy modifier", List(d, y)) -> 1.0
-//    })
+
+    val mentions = thisSentence.mentions.filter(m => {
+      (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
+    }).map(m => m.label)
+    feats += FeatureKey("number of mention", List(mentions + y)) -> mentions.size
+
+    thisSentence.deps.filter(d => {
+      d.head == begin
+    }).map(d => d.label).foreach(d => {
+      feats += FeatureKey("dependency head", List(d, y)) -> 1.0
+    })
+
+    thisSentence.deps.filter(d => {
+      d.mod == begin
+    }).map(d => d.label).foreach(d => {
+      feats += FeatureKey("dependency mod", List(d, y)) -> 1.0
+    })
 
     feats.toMap
   }
