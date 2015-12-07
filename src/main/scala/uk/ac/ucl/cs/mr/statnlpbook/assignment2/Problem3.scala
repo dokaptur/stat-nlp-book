@@ -12,7 +12,7 @@ object Problem3Triggers {
 
     // load train and dev data
     // read the specification of the method to load more/less data for debugging speedup
-    val (trainDocs, devDocs) = BioNLP.getTrainDevDocuments(train_dir, 0.8, 500)
+    val (trainDocs, devDocs) = BioNLP.getTrainDevDocuments(train_dir, 0.8, 1000)
     // load test
     val testDocs = BioNLP.getTestDocuments(test_dir)
     // make tuples (Candidate,Gold)
@@ -45,7 +45,7 @@ object Problem3Triggers {
     // use training algorithm to get weights of model
     //TODO: change the trainer to explore different training algorithms
     //val triggerWeights = PrecompiledTrainers.trainNB(triggerTrain,triggerModel.feat)
-    val triggerWeights = PrecompiledTrainers.trainPerceptron(triggerTrain, triggerModel.feat, triggerModel.predict, 4)
+    val triggerWeights = PrecompiledTrainers.trainPerceptron(triggerTrain, triggerModel.feat, triggerModel.predict, 10, 0.9)
 
     // get predictions on dev
     val (triggerDevPred, triggerDevGold) = triggerDev.map { case (trigger, gold) => (triggerModel.predict(trigger, triggerWeights), gold) }.unzip

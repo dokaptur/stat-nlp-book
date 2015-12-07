@@ -78,12 +78,12 @@ object Features {
 
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
+    feats += FeatureKey("first trigger word length", List(token.word, y)) -> token.word.size //word size
     feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0 //word stem feature
     feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
 
-
-    //feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
-    //feats += FeatureKey("is digit", List(containDigit(token.word).toString, y)) -> 1.0
+    feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
+    feats += FeatureKey("is digit", List(containDigit(token.word).toString, y)) -> 1.0
 
 
     if (begin > 0) {
@@ -95,12 +95,23 @@ object Features {
       feats += FeatureKey("bigram after", List(next.word, token.word, y)) -> 1.0
     }
 
+    val mentionsSorted = thisSentence.mentions.sortBy(m => m.begin)
+    val mentionsAfter = mentionsSorted.filter(m => m.begin > end)
+    val mentionsBefore = mentionsSorted.filter(m => m.begin < begin)
 
+    if (!mentionsAfter.isEmpty) {
+      feats += FeatureKey("distance to mention right", List(y)) -> (mentionsAfter.head.begin - end)
+    }
+    if (!mentionsBefore.isEmpty) {
+      feats += FeatureKey("distance to mention left", List(y)) -> (begin - mentionsBefore.last.begin)
+    }
+    val mentionsSent = thisSentence.mentions.map(m => m.label)
+    feats += FeatureKey("number of mention in sentence", List(mentionsSent + y)) -> mentionsSent.size
 
     val mentions = thisSentence.mentions.filter(m => {
       (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
     }).map(m => m.label)
-    feats += FeatureKey("number of mention", List(mentions + y)) -> mentions.size
+    feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
 
     thisSentence.deps.filter(d => {
       d.head == begin
