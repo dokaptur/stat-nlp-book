@@ -79,7 +79,6 @@ object Features {
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
     feats += FeatureKey("first trigger word length", List(token.word, y)) -> token.word.size //word size
-    feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0 //word stem feature
     feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
 
     feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
@@ -96,8 +95,8 @@ object Features {
     }
 
     val mentionsSorted = thisSentence.mentions.sortBy(m => m.begin)
-    val mentionsAfter = mentionsSorted.filter(m => m.begin > end)
-    val mentionsBefore = mentionsSorted.filter(m => m.begin < begin)
+    val mentionsAfter = mentionsSorted.filter(m => m.begin >= end)
+    val mentionsBefore = mentionsSorted.filter(m => m.begin <= begin)
 
     if (!mentionsAfter.isEmpty) {
       feats += FeatureKey("distance to mention right", List(y)) -> (mentionsAfter.head.begin - end)
@@ -113,17 +112,21 @@ object Features {
     }).map(m => m.label)
     feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
 
-    thisSentence.deps.filter(d => {
+    val depsHeads = thisSentence.deps.filter(d => {
       d.head == begin
-    }).map(d => d.label).foreach(d => {
+    }).map(d => d.label)
+    depsHeads.foreach(d => {
       feats += FeatureKey("dependency head", List(d, y)) -> 1.0
     })
+    //feats += FeatureKey("number of dependency heads", List(depsHeads + y)) -> depsHeads.size
 
-    thisSentence.deps.filter(d => {
+    val depsMods = thisSentence.deps.filter(d => {
       d.mod == begin
-    }).map(d => d.label).foreach(d => {
+    }).map(d => d.label)
+    depsMods.foreach(d => {
       feats += FeatureKey("dependency mod", List(d, y)) -> 1.0
     })
+    //feats += FeatureKey("number of dependency mods", List(depsMods + y)) -> depsMods.size
 
     feats.toMap
   }

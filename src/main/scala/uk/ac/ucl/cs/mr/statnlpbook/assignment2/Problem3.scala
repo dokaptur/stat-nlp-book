@@ -55,7 +55,7 @@ object Problem3Triggers {
     println("Evaluation for trigger classification:")
     println(triggerDevEval.toString)
 
-    ErrorAnalysis(triggerDev.unzip._1,triggerDevGold,triggerDevPred).showErrors(5)
+    ErrorAnalysis(triggerDev.unzip._1,triggerDevGold,triggerDevPred).showErrors(10)
 
     // get predictions on test
     val triggerTestPred = triggerTest.map { case (trigger, dummy) => triggerModel.predict(trigger, triggerWeights) }
