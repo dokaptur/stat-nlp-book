@@ -48,7 +48,25 @@ object Features {
     feats.toMap
   }
 
+  def containUpperCase(word : String) : Int = {
+    var result = 0
+    for (i <- 0 to word.length - 1) {
+      if (word(i).isUpper)
+        result = 1
+    }
+    result
+  }
 
+
+  def containDigit(word : String) : Int = {
+    var result = 0
+    for (i <- 0 to word.length - 1) {
+      if (word(i).isDigit)
+        result = 1
+    }
+    result
+  }
+  
   //TODO: make your own feature functions
   def myTriggerFeatures(x: Candidate, y: Label): FeatureVector = {
     val doc = x.doc
@@ -63,10 +81,21 @@ object Features {
     feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0 //word stem feature
     feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
 
+
+    //feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
+    //feats += FeatureKey("is digit", List(containDigit(token.word).toString, y)) -> 1.0
+
+
     if (begin > 0) {
       val before = thisSentence.tokens(begin-1)
       feats += FeatureKey("bigram before", List(before.word, token.word, y)) -> 1.0
     }
+    if (begin + 1 < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(begin+1)
+      feats += FeatureKey("bigram after", List(next.word, token.word, y)) -> 1.0
+    }
+
+
 
     val mentions = thisSentence.mentions.filter(m => {
       (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
