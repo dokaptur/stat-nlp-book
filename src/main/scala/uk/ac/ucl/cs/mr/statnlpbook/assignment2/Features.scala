@@ -1,5 +1,6 @@
 package uk.ac.ucl.cs.mr.statnlpbook.assignment2
 
+
 import scala.collection.mutable
 
 /**
@@ -66,7 +67,31 @@ object Features {
     }
     result
   }
-  
+
+  def dependencyToProteinRight (dep : List[Dependency], men : IndexedSeq[Mention]): String = {
+    var result = ""
+    var minLength = 400;
+    var index = 0
+    if (dep.size > 0) {
+      for (i <- 0 to dep.size-1) {
+        // check if there is any dependency to or from the right side of token
+        if (dep(i).head < dep(i).mod) {
+          // find the shortes path
+          if ( (dep(i).mod - dep(i).head) < minLength) {
+            for (k <- 0 to men.size - 1) {
+              if ( (dep(i).head >= men(k).begin && dep(i).head < men(k).end) || (dep(i).mod >= men(k).begin && dep(i).mod < men(k).end) ) {
+                minLength = dep(i).mod - dep(i).head
+                index = i
+                result = dep(index).label
+              }
+            }
+          }
+        }
+      }
+    }
+    result
+  }
+
   //TODO: make your own feature functions
   def myTriggerFeatures(x: Candidate, y: Label): FeatureVector = {
     val doc = x.doc
@@ -106,6 +131,11 @@ object Features {
     }
     val mentionsSent = thisSentence.mentions.map(m => m.label)
     feats += FeatureKey("number of mention in sentence", List(mentionsSent + y)) -> mentionsSent.size
+
+    val dep = thisSentence.deps.filter(d => {
+      d.mod == begin || d.head == begin
+    })
+    feats += FeatureKey("bdsdsadad", List(dependencyToProteinRight(dep, thisSentence.mentions), y)) -> 1.0
 
     val mentions = thisSentence.mentions.filter(m => {
       (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
