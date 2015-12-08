@@ -146,7 +146,7 @@ object Features {
 
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
-    feats += FeatureKey("first trigger word length", List(token.word, y)) -> token.word.size //word size
+    feats += FeatureKey("first trigger word length", List(token.word, y)) -> token.word.size
     feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
 
     feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
@@ -223,15 +223,32 @@ object Features {
     feats += FeatureKey("label bias", List(y)) -> 1.0
     val token = thisSentence.tokens(begin) //first word of argument
     feats += FeatureKey("first argument word", List(token.word, y)) -> 1.0
-    feats += FeatureKey("is protein_first trigger word", List(x.isProtein.toString,eventHeadToken.word, y)) -> 1.0
+    feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
+    //feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0
 
-    val deps = thisSentence.deps.filter(d => {
-      (d.head >= begin && d.head < end) || (d.mod >= begin && d.mod < end)
+    feats += FeatureKey("second argument word", List(eventHeadToken.word, y)) -> 1.0
+    feats += FeatureKey("second trigger word pos", List(eventHeadToken.pos, y)) -> 1.0
+    //feats += FeatureKey("second trigger word stem", List(eventHeadToken.stem, y)) -> 1.0
+
+    feats += FeatureKey("is protein first trigger word", List(x.isProtein.toString,eventHeadToken.word, y)) -> 1.0
+    feats += FeatureKey("is protein second trigger word", List(x.isProtein.toString,token.word, y)) -> 1.0
+
+    val depsFrom = thisSentence.deps.filter(d => {
+      //(d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)
+      d.head == begin  && d.mod == event.begin
     }).map(d => d.label)
-
-    deps.foreach(d => {
-      feats += FeatureKey("dependancy modifier", List(d, y)) -> 1.0
+    depsFrom.foreach(d => {
+      feats += FeatureKey("dependency from trigger to parent", List(d, y)) -> 1.0
     })
+    feats += FeatureKey("dependency t-p aggregated", List(depsFrom + y)) -> depsFrom.size
+    val depsTo = thisSentence.deps.filter(d => {
+      //(d.head >= event.begin && d.head <= event.end && d.mod >= begin && d.mod < end)
+      d.head == event.begin && d.mod == begin
+    }).map(d => d.label)
+    depsTo.foreach(d => {
+      feats += FeatureKey("dependency from parent to trigger", List(d, y)) -> 1.0
+    })
+    feats += FeatureKey("dependency p-t aggregated", List(depsTo + y)) -> depsTo.size
 
     //distance from the candidate to the potential argument
     val distance = begin - event.begin
@@ -240,27 +257,32 @@ object Features {
     //bigram near the candidate
     if (begin > 0) {
       val before = thisSentence.tokens(begin - 1)
-      feats += FeatureKey("bigram before potential argument", List(before.word, token.word, y)) -> 1.0
+      feats += FeatureKey("bigram before event trigger", List(before.word, token.word, y)) -> 1.0
     }
     if (begin + 1 < thisSentence.tokens.size) {
       val next = thisSentence.tokens(begin + 1)
-      feats += FeatureKey("bigram after potential argument", List(next.word, token.word, y)) -> 1.0
+      feats += FeatureKey("bigram after event trigger", List(next.word, token.word, y)) -> 1.0
     }
     // bigram near the potential argument
     if (event.begin > 0) {
       val before = thisSentence.tokens(event.begin - 1)
-      feats += FeatureKey("bigram before event trigger", List(before.word, token.word, y)) -> 1.0
+      feats += FeatureKey("bigram before potential argument", List(before.word, eventHeadToken.word, y)) -> 1.0
     }
     if (event.begin + 1 < thisSentence.tokens.size) {
       val next = thisSentence.tokens(event.begin + 1)
-      feats += FeatureKey("bigram after event trigger", List(next.word, token.word, y)) -> 1.0
+      feats += FeatureKey("bigram after potential argument", List(next.word, eventHeadToken.word, y)) -> 1.0
     }
 
     //try to consider number of proteins
     val mentions = thisSentence.mentions.filter(m => {
-      (m.begin >= event.end && m.begin <= begin) || (m.end >= event.begin && m.end <= end)
+      //(m.begin >= event.end && m.begin <= begin) || (m.end >= event.begin && m.end <= end)
+      true
     }).map(m => m.label)
-    feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
+    feats += FeatureKey("number of mentions in sentence", List(mentions + y)) -> mentions.size
+
+    val dependencyGraph = buildDependencyGraph(thisSentence.tokens.size, thisSentence.deps)
+    val pathToProtein = shortestPathToProtein(begin, end, dependencyGraph, thisSentence.mentions)
+    feats += FeatureKey("shortest path to protein", List(pathToProtein._1, y)) -> pathToProtein._2
    
     feats.toMap
   }
