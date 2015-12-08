@@ -233,7 +233,35 @@ object Features {
       feats += FeatureKey("dependancy modifier", List(d, y)) -> 1.0
     })
 
+    //distance from the candidate to the potential argument
+    val distance = begin - event.begin
+    feats += FeatureKey("distances between trigger and arguments", List(eventHeadToken.word, token.word, y)) -> distance
 
+    //bigram near the candidate
+    if (begin > 0) {
+      val before = thisSentence.tokens(begin - 1)
+      feats += FeatureKey("bigram before potential argument", List(before.word, token.word, y)) -> 1.0
+    }
+    if (begin + 1 < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(begin + 1)
+      feats += FeatureKey("bigram after potential argument", List(next.word, token.word, y)) -> 1.0
+    }
+    // bigram near the potential argument
+    if (event.begin > 0) {
+      val before = thisSentence.tokens(event.begin - 1)
+      feats += FeatureKey("bigram before event trigger", List(before.word, token.word, y)) -> 1.0
+    }
+    if (event.begin + 1 < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(event.begin + 1)
+      feats += FeatureKey("bigram after event trigger", List(next.word, token.word, y)) -> 1.0
+    }
+
+    //try to consider number of proteins
+    val mentions = thisSentence.mentions.filter(m => {
+      (m.begin >= event.end && m.begin <= begin) || (m.end >= event.begin && m.end <= end)
+    }).map(m => m.label)
+    feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
+   
     feats.toMap
   }
 
