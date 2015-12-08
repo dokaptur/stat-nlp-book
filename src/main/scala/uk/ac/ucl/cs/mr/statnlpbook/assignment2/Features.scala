@@ -1,6 +1,8 @@
 package uk.ac.ucl.cs.mr.statnlpbook.assignment2
 
 
+import cc.factorie.app.nlp.coref.CorefFeatures.False
+
 import scala.collection.mutable
 
 /**
@@ -68,28 +70,69 @@ object Features {
     result
   }
 
-  def dependencyToProteinRight (dep : List[Dependency], men : IndexedSeq[Mention]): String = {
+  def dependencyToProteinRight (dep : List[Dependency], men : IndexedSeq[Mention]): (String, Double) = {
     var result = ""
     var minLength = 400;
     var index = 0
     if (dep.size > 0) {
       for (i <- 0 to dep.size-1) {
-        // check if there is any dependency to or from the right side of token
-        if (dep(i).head < dep(i).mod) {
-          // find the shortes path
-          if ( (dep(i).mod - dep(i).head) < minLength) {
-            for (k <- 0 to men.size - 1) {
-              if ( (dep(i).head >= men(k).begin && dep(i).head < men(k).end) || (dep(i).mod >= men(k).begin && dep(i).mod < men(k).end) ) {
-                minLength = dep(i).mod - dep(i).head
-                index = i
-                result = dep(index).label
-              }
+        if ( (dep(i).mod - dep(i).head) < minLength) {
+          for (k <- 0 to men.size - 1) {
+            if ( (dep(i).head >= men(k).begin && dep(i).head < men(k).end) ||
+              (dep(i).mod >= men(k).begin && dep(i).mod < men(k).end) ) {
+              minLength = dep(i).mod - dep(i).head
+              index = i
+              result = dep(index).label
             }
           }
         }
       }
     }
-    result
+    if (result.isEmpty) {
+      minLength = 0
+    }
+    result -> minLength
+  }
+
+  def shortestPathToProtein (begin: Int, end: Int, depsGraph: Map[Int, List[Dependency]],
+                             mentions: IndexedSeq[Mention]): (String, Double) = {
+    var protein = ""
+    var distance = 0.0
+    val queue = mutable.Queue[(Dependency, Double)]()
+    val visited = mutable.HashMap[Int, Boolean]().withDefaultValue(false)
+    for (i <- begin until end) {
+      queue.enqueue(depsGraph.getOrElse(i, List[Dependency]()).map(f => (f -> 1.0)):_*)
+      visited(i) = true
+    }
+    var found = false
+    while (!found && queue.size > 0) {
+      val (dep, dist) = queue.dequeue()
+      val mod = dep.mod
+      if (!visited(mod)) {
+        visited(mod) = true
+        // check if mod is a protein
+        if (mentions.map(m => m.begin).contains(mod)) {
+          protein = mentions.filter(m => m.begin == mod).head.label
+          distance = dist
+          found = true
+        }
+        queue.enqueue(depsGraph.getOrElse(mod, List[Dependency]()).map(f => (f -> (dist + 1.0))):_*)
+      }
+    }
+    protein -> distance
+  }
+
+  def buildDependencyGraph(size: Int, deps: List[Dependency]) : Map[Int, List[Dependency]] = {
+    val hashMap = new mutable.HashMap[Int, mutable.ListBuffer[Dependency]]()
+      .withDefaultValue(mutable.ListBuffer[Dependency]())
+    for (i <- 0 until size-1) {
+      deps.foreach(d => {
+        if (d.head == i) {
+          hashMap(i) += d
+        }
+      })
+    }
+    hashMap.map(f => (f._1 -> f._2.toList)).toMap
   }
 
   //TODO: make your own feature functions
@@ -124,39 +167,47 @@ object Features {
     val mentionsBefore = mentionsSorted.filter(m => m.begin <= begin)
 
     if (!mentionsAfter.isEmpty) {
-      feats += FeatureKey("distance to mention right", List(y)) -> (mentionsAfter.head.begin - end)
+      feats += FeatureKey("distance to mention right", List(mentionsAfter.head.label, y)) ->
+        (mentionsAfter.head.begin - end)
     }
     if (!mentionsBefore.isEmpty) {
-      feats += FeatureKey("distance to mention left", List(y)) -> (begin - mentionsBefore.last.begin)
+      feats += FeatureKey("distance to mention left", List(mentionsBefore.last.label, y)) ->
+        (begin - mentionsBefore.last.begin)
     }
-    val mentionsSent = thisSentence.mentions.map(m => m.label)
-    feats += FeatureKey("number of mention in sentence", List(mentionsSent + y)) -> mentionsSent.size
 
-    val dep = thisSentence.deps.filter(d => {
-      d.mod == begin || d.head == begin
-    })
-    feats += FeatureKey("bdsdsadad", List(dependencyToProteinRight(dep, thisSentence.mentions), y)) -> 1.0
+    feats += FeatureKey("number of mention in sentence", List(thisSentence.mentions.map(m => m.label) + y)) ->
+      thisSentence.mentions.size
 
     val mentions = thisSentence.mentions.filter(m => {
       (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
     }).map(m => m.label)
     feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
 
-    val depsHeads = thisSentence.deps.filter(d => {
-      d.head == begin
-    }).map(d => d.label)
-    depsHeads.foreach(d => {
-      feats += FeatureKey("dependency head", List(d, y)) -> 1.0
-    })
-    //feats += FeatureKey("number of dependency heads", List(depsHeads + y)) -> depsHeads.size
+    val dependencyGraph = buildDependencyGraph(thisSentence.tokens.size, thisSentence.deps)
+    val pathToProtein = shortestPathToProtein(begin, end, dependencyGraph, thisSentence.mentions)
+    feats += FeatureKey("shortest path to protein", List(pathToProtein._1, pathToProtein._2.toString, y)) -> 1.0
 
-    val depsMods = thisSentence.deps.filter(d => {
-      d.mod == begin
-    }).map(d => d.label)
-    depsMods.foreach(d => {
-      feats += FeatureKey("dependency mod", List(d, y)) -> 1.0
+    val dep = thisSentence.deps.filter(d => {
+      (d.mod == begin || d.head == begin) && (d.head < d.mod)
     })
-    //feats += FeatureKey("number of dependency mods", List(depsMods + y)) -> depsMods.size
+    val depToProteinRight = dependencyToProteinRight(dep, thisSentence.mentions)
+    feats += FeatureKey("dependency to protein right",
+      List(depToProteinRight._1, depToProteinRight._2.toString, y)) -> 1.0
+
+
+    val depHeads = thisSentence.deps.filter(d => {
+      d.head == begin
+    })
+    depHeads.foreach(d => {
+      feats += FeatureKey("dependency head", List(d.label, y)) -> 1.0
+    })
+
+    val depMods = thisSentence.deps.filter(d => {
+      d.mod == begin
+    })
+    depMods.foreach(d => {
+      feats += FeatureKey("dependency mod", List(d.label, y)) -> 1.0
+    })
 
     feats.toMap
   }
