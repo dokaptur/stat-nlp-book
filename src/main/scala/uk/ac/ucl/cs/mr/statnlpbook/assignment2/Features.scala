@@ -167,21 +167,16 @@ object Features {
     val mentionsBefore = mentionsSorted.filter(m => m.begin <= begin)
 
     if (!mentionsAfter.isEmpty) {
-      feats += FeatureKey("distance to mention right", List(mentionsAfter.head.label, y)) ->
-        (mentionsAfter.head.begin - end)
+      feats += FeatureKey("distance to mention right",
+        List(mentionsAfter.head.label, (mentionsAfter.head.begin - end).toString, y)) -> 1.0
+
     }
     if (!mentionsBefore.isEmpty) {
-      feats += FeatureKey("distance to mention left", List(mentionsBefore.last.label, y)) ->
-        (begin - mentionsBefore.last.begin)
+      feats += FeatureKey("distance to mention left",
+        List(mentionsBefore.last.label, (begin - mentionsBefore.last.begin).toString, y)) -> 1.0
     }
 
-    feats += FeatureKey("number of mention in sentence", List(thisSentence.mentions.map(m => m.label) + y)) ->
-      thisSentence.mentions.size
-
-    val mentions = thisSentence.mentions.filter(m => {
-      (m.begin >= begin && m.begin <= end) || (m.end >= m.begin &&  m.end <= end)
-    }).map(m => m.label)
-    feats += FeatureKey("number of mention in frame", List(mentions + y)) -> mentions.size
+    feats += FeatureKey("number of mention in sentence", List(thisSentence.mentions.size.toString + y)) -> 1.0
 
     val dependencyGraph = buildDependencyGraph(thisSentence.tokens.size, thisSentence.deps)
     val pathToProtein = shortestPathToProtein(begin, end, dependencyGraph, thisSentence.mentions)
@@ -228,9 +223,12 @@ object Features {
     val token = thisSentence.tokens(begin) //first word of argument
 
     feats += FeatureKey("first destination word", List(token.word, y)) -> 1.0
-    feats += FeatureKey("is source a protein", List(x.isProtein.toString, y)) -> 1.0
-   // feats += FeatureKey("is protein_first event word", List(event.isProtein.toString, y)) -> 1.0
+    feats += FeatureKey("is destination a protein", List(x.isProtein.toString, y)) -> 1.0
+    //feats += FeatureKey("is source a protein", List(event.isProtein.toString, y)) -> 1.0
 
+//    if (!x.isProtein) {
+//      feats += FeatureKey("first destination word pos", List(token.pos, y)) -> 1.0
+//    }
 
     val depsFrom = thisSentence.deps.filter(d => {
       (d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)
@@ -277,8 +275,9 @@ object Features {
 
     //try to consider number of proteins
     val mentions = thisSentence.mentions.filter(m => {
-      //(m.begin >= event.end && m.begin <= begin) || (m.end >= event.begin && m.end <= end)
-      true
+      val start = Math.min(begin, event.begin)
+      val stop = Math.max(end, event.end)
+      (m.begin >= start && m.begin < stop) && (m.end >= event.begin && m.end < stop)
     }).map(m => m.label)
     feats += FeatureKey("number of mentions in sentence", List(mentions.size + y)) -> 1.0
 
