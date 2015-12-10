@@ -226,67 +226,76 @@ object Features {
     val feats = new mutable.HashMap[FeatureKey,Double]
     feats += FeatureKey("label bias", List(y)) -> 1.0
     val token = thisSentence.tokens(begin) //first word of argument
+    val tokenEnd = thisSentence.tokens(end-1) //last word of argument
+    //feats += FeatureKey("first argument word", List(tokenEnd.word, y)) -> 1.0
+    //feats += FeatureKey("first argument word", List(tokenEnd.pos, y)) -> 1.0
+
     feats += FeatureKey("first argument word", List(token.word, y)) -> 1.0
-    feats += FeatureKey("is protein_first trigger word", List(x.isProtein.toString,eventHeadToken.word, y)) -> 1.0
+    feats += FeatureKey("is protein_first trigger word", List(x.isProtein.toString, y)) -> 1.0
+   // feats += FeatureKey("is protein_first event word", List(event.isProtein.toString, y)) -> 1.0
+
+    //feats += FeatureKey("is protein_first trigger word", List(x.isProtein.toString,eventHeadToken.word, y)) -> 1.0
+    //feats += FeatureKey("is protein_first trigger word", List(x.isProtein.toString,eventEndToken.word, y)) -> 1.0
     //feats += FeatureKey("first argument word", List(token.word, y)) -> 1.0
-   // feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
+    //feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
     //feats += FeatureKey("first trigger word stem", List(token.stem, y)) -> 1.0
 
-    feats += FeatureKey("end word", List(eventEndToken.word, y)) -> 1.0
-    feats += FeatureKey("head word", List(eventHeadToken.word, y)) -> 1.0
-    feats += FeatureKey("end pos ", List(eventEndToken.pos, y)) -> 1.0
-    feats += FeatureKey("head pos", List(eventHeadToken.pos, y)) -> 1.0
+    //feats += FeatureKey("end trigger word", List(eventEndToken.word, y)) -> 1.0
+    //feats += FeatureKey("head event word", List(eventHeadToken.word, y)) -> 1.0
+    //feats += FeatureKey("end trigger pos ", List(eventEndToken.pos, y)) -> 1.0
+    //feats += FeatureKey("head event pos", List(eventHeadToken.pos, y)) -> 1.0
 
-   // feats += FeatureKey("second argument word", List(eventHeadToken.word, y)) -> 1.0
-   // feats += FeatureKey("second trigger word pos", List(eventHeadToken.pos, y)) -> 1.0
-    //feats += FeatureKey("second trigger word stem", List(eventHeadToken.stem, y)) -> 1.0
 
-   // feats += FeatureKey("is protein first trigger word", List(x.isProtein.toString,eventHeadToken.word, y)) -> 1.0
-   // feats += FeatureKey("is protein second trigger word", List(x.isProtein.toString,token.word, y)) -> 1.0
 
     val depsFrom = thisSentence.deps.filter(d => {
-      //(d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)
-      d.head ==  event.begin && d.mod == eventEnd
+      (d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)
+      //d.head ==  event.begin && d.mod == eventEnd
     }).map(d => d.label)
     depsFrom.foreach(d => {
       feats += FeatureKey("dependency from trigger to parent", List(d, y)) -> 1.0
     })
-    feats += FeatureKey("dependency t-p aggregated", List(depsFrom + y)) -> depsFrom.size
+    //feats += FeatureKey("dependency t-p aggregated", List(depsFrom + y)) -> depsFrom.size
+    feats += FeatureKey("dependency t-p aggregated", List(depsFrom.size.toString, y)) -> 1.0
     val depsTo = thisSentence.deps.filter(d => {
-      //(d.head >= event.begin && d.head <= event.end && d.mod >= begin && d.mod < end)
-      d.head == eventEnd && d.mod == event.begin
+      (d.head >= event.begin && d.head <= event.end && d.mod >= begin && d.mod < end)
+     // d.head == eventEnd && d.mod == event.begin
     }).map(d => d.label)
     depsTo.foreach(d => {
       feats += FeatureKey("dependency from parent to trigger", List(d, y)) -> 1.0
     })
-    feats += FeatureKey("dependency p-t aggregated", List(depsTo + y)) -> depsTo.size
+    //feats += FeatureKey("dependency p-t aggregated", List(depsTo + y)) -> depsTo.size
+    feats += FeatureKey("dependency p-t aggregated", List(depsTo.size.toString, y)) -> 1.0
 
     //distance from the candidate to the potential argument
-    //val distance = begin - event.begin
-   // feats += FeatureKey("distances between trigger and arguments", List(eventHeadToken.word, token.word, y)) -> distance
+    val distance = begin - event.begin
+    feats += FeatureKey("distances between trigger and arguments", List(distance.toString, y)) -> 1.0
 
 
-    val distance = (begin + end) / 2 - event.begin
-    feats += FeatureKey("distances between trigger and arguments", List(distance.toString, y)) -> 1
+    //val distance = (begin + end) / 2 - event.begin
+    //feats += FeatureKey("distances between trigger and arguments", List(distance.toString, y)) -> 1
 
 
     //bigram near the candidate
     if (begin > 0) {
-      val before = thisSentence.tokens(eventEnd - 1)
-      feats += FeatureKey("bigram before event trigger", List(before.word, token.word, y)) -> 1.0
+      val before = thisSentence.tokens(begin - 1)
+      feats += FeatureKey("bigram before event trigger", List(before.word, thisSentence.tokens(begin).word, y)) -> 1.0
+      feats += FeatureKey("unigram before event trigger", List(before.word, y)) -> 1.0
     }
-    if (begin + 1 < thisSentence.tokens.size) {
-      val next = thisSentence.tokens(eventEnd + 1)
-      feats += FeatureKey("bigram after event trigger", List(next.word, token.word, y)) -> 1.0
+    if (end  < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(end)
+      feats += FeatureKey("bigram after event trigger", List(next.word, thisSentence.tokens(end-1).word, y)) -> 1.0
+      feats += FeatureKey("unigram after event trigger", List(next.word, y)) -> 1.0
     }
     // bigram near the potential argument
     if (event.begin > 0) {
       val before = thisSentence.tokens(event.begin - 1)
       feats += FeatureKey("bigram before potential argument", List(before.word, eventHeadToken.word, y)) -> 1.0
+      feats += FeatureKey("unigram before potential argument", List(before.word, y)) -> 1.0
     }
-    if (event.begin + 1 < thisSentence.tokens.size) {
-      val next = thisSentence.tokens(event.begin + 1)
-      feats += FeatureKey("bigram after potential argument", List(next.word, eventHeadToken.word, y)) -> 1.0
+    if (event.end < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(event.end)
+      feats += FeatureKey("bigram after potential argument", List(next.word, thisSentence.tokens(event.end - 1).word, y)) -> 1.0
+      feats += FeatureKey("unigram after potential argument", List(next.word, y)) -> 1.0
     }
 
     //try to consider number of proteins
@@ -294,11 +303,12 @@ object Features {
       //(m.begin >= event.end && m.begin <= begin) || (m.end >= event.begin && m.end <= end)
       true
     }).map(m => m.label)
-    feats += FeatureKey("number of mentions in sentence", List(mentions + y)) -> mentions.size
+    //feats += FeatureKey("number of mentions in sentence", List(mentions + y)) -> mentions.size
 
     val dependencyGraph = buildDependencyGraph(thisSentence.tokens.size, thisSentence.deps)
     val pathToProtein = shortestPathToProtein(begin, end, dependencyGraph, thisSentence.mentions)
-    feats += FeatureKey("shortest path to protein", List(pathToProtein._1, y)) -> pathToProtein._2
+    feats += FeatureKey("shortest path to protein", List(pathToProtein._1,pathToProtein._2.toString, y)) -> 1.0
+
 
     feats.toMap
   }

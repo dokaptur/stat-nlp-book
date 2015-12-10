@@ -102,7 +102,7 @@ object Problem3Arguments {
     val argumentModel = SimpleClassifier(argumentLabels, Features.myArgumentFeatures)
 
     //val argumentWeights = PrecompiledTrainers.trainNB(argumentTrain,argumentModel.feat)
-    val argumentWeights = PrecompiledTrainers.trainPerceptron(argumentTrain,argumentModel.feat,argumentModel.predict,21)
+    val argumentWeights = PrecompiledTrainers.trainPerceptron(argumentTrain,argumentModel.feat,argumentModel.predict,11)
 
     // get predictions on dev
     val (argumentDevPred, argumentDevGold) = argumentDev.map { case (arg, gold) => (argumentModel.predict(arg,argumentWeights), gold) }.unzip
