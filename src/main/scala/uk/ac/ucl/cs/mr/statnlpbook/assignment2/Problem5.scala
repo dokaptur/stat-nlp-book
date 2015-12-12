@@ -50,8 +50,8 @@ object Problem5{
     // define model
     //TODO: change the features function to explore different types of features
     //TODO: experiment with the unconstrained and constrained (you need to implement the inner search) models
-    val jointModel = JointUnconstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
-    //val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
+    //val jointModel = JointUnconstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
+    val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
 
     // use training algorithm to get weights of model
     val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,2)
@@ -103,9 +103,41 @@ case class JointConstrainedClassifier(triggerLabels:Set[Label],
                                       argumentFeature:(Candidate,Label)=>FeatureVector
                                        ) extends JointModel {
   def predict(x: Candidate, weights: Weights) = {
-    //TODO
-    ???
+    def argmax(labels: Set[Label], x: Candidate, weights: Weights, feat:(Candidate,Label)=>FeatureVector) = {
+      val scores = labels.toSeq.map(y => y -> dot(feat(x, y), weights)).toMap withDefaultValue 0.0
+      scores.maxBy(_._2)._1
+    }
+    def argmaxTheme(x:Candidate, weights: Weights, feat:(Candidate,Label)=>FeatureVector) = {
+      val scores = x.arguments.map(l => l -> dot(feat(l, new Label("Theme")), weights)).toMap withDefaultValue 0.0
+      scores.maxBy(_._2)._1
+    }
+    val bestTrigger = argmax(triggerLabels,x,weights,triggerFeature)
+
+    if (bestTrigger==new Label("None"))
+    {
+      val bestArguments = for (arg <- x.arguments) yield new Label("None")
+      (bestTrigger,bestArguments)
+    }
+    else if (bestTrigger!=new Label("Regulation")){
+
+      val firstThemeArguments = argmaxTheme(x, weights, argumentFeature)
+      argumentLabels.-(new Label ("Cause"))
+      val bestArguments = for (arg <- x.arguments) yield
+      {if (arg==firstThemeArguments) {new Label("Theme")}
+      else argmax(argumentLabels, arg, weights, argumentFeature)}
+      (bestTrigger,bestArguments)
+    }
+    else {
+      val firstThemeArguments = argmaxTheme(x, weights, argumentFeature)
+      argumentLabels.-(new Label ("Cause"))
+      val bestArguments = for (arg <- x.arguments) yield
+      {if (arg==firstThemeArguments) {new Label("Theme")}
+      else argmax(argumentLabels, arg, weights, argumentFeature)}
+      (bestTrigger,bestArguments)
+    }
+
   }
+
 
 }
 
