@@ -101,42 +101,20 @@ object Problem3Arguments {
 
     // define model
     val argumentModel = SimpleClassifier(argumentLabels, Features.myArgumentFeatures)
-//    val argumentModelBeta = SimpleClassifier(argumentLabels, Features.myArgumentFeaturesBeta)
 
-    //val argumentWeights = PrecompiledTrainers.trainNB(argumentTrain,argumentModel.feat)
-    val argumentWeights = Problem1.trainPerceptron(argumentTrain, argumentModel.feat, argumentModel.predict, 10, 1.0)
-    //val argumentWeights = Problem2.trainAvgPerceptron(argumentTrain,argumentModel.feat,argumentModel.predict,10,1.0)
-//    val argumentWeightsBeta = PrecompiledTrainers.trainPerceptron(
-//      argumentTrain, argumentModel.feat, argumentModelBeta.predict, 20, 1.0)
+    val argumentWeights = PrecompiledTrainers.trainNB(argumentTrain,argumentModel.feat)
+    //val argumentWeights = Problem1.trainPerceptron(argumentTrain, argumentModel.feat, argumentModel.predict, 10, 1.0)
+    //val argumentWeights = PrecompiledTrainers.trainPerceptron(argumentTrain, argumentModel.feat, argumentModel.predict, 5, 1.0)
+    //val argumentWeights = Problem2.trainAvgPerceptron(argumentTrain,argumentModel.feat,argumentModel.predict,12,1.0)
 
     // get predictions on dev
     val (argumentDevPred, argumentDevGold) = argumentDev.map { case (arg, gold) => (argumentModel.predict(arg,argumentWeights), gold) }.unzip
-//    val (argumentDevPredBeta, _) = argumentDev.map { case (arg, gold) => (argumentModelBeta.predict(arg,argumentWeightsBeta), gold) }.unzip
     // evaluate on dev
     val argumentDevEval = Evaluation(argumentDevGold, argumentDevPred, Set("None"))
     println("Evaluation for argument classification:")
     println(argumentDevEval.toString)
 
-
     ErrorAnalysis(argumentDev.unzip._1,argumentDevGold,argumentDevPred).showErrors(5)
-
-//    def compareFeatures() {
-//      var count = 0
-//      for ((c, i) <- argumentDev.unzip._1.zipWithIndex) {
-//        if (//!argumentDevGold(i).equals("None") &&
-//          argumentDevGold(i).equals(argumentDevPred(i)) &&
-//          !argumentDevPred(i).equals(argumentDevPredBeta(i))) {
-//          val word = c.doc.sentences(c.sentenceIndex).tokens(c.begin).word
-//          count += 1
-//          println("Candidate \"" + word + "\" with label \"" + argumentDevGold(i) + "\" previously mislabelled as \"" +
-//            argumentDevPredBeta(i) + "\"")
-//        }
-//        if (count > 10) {
-//          return
-//        }
-//      }
-//    }
-//    compareFeatures()
 
     // get predictions on test
     val argumentTestPred = argumentTest.map { case (arg, dummy) => argumentModel.predict(arg,argumentWeights) }
