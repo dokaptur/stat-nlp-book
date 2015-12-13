@@ -51,25 +51,6 @@ object Features {
     feats.toMap
   }
 
-  def containUpperCase(word : String) : Int = {
-    var result = 0
-    for (i <- 0 to word.length - 1) {
-      if (word(i).isUpper)
-        result = 1
-    }
-    result
-  }
-
-
-  def containDigit(word : String) : Int = {
-    var result = 0
-    for (i <- 0 to word.length - 1) {
-      if (word(i).isDigit)
-        result = 1
-    }
-    result
-  }
-
   def dependencyToProteinRight (dep : List[Dependency], men : IndexedSeq[Mention]): (String, Double) = {
     var result = ""
     var minLength = 400;
@@ -111,8 +92,9 @@ object Features {
       if (!visited(mod)) {
         visited(mod) = true
         // check if mod is a protein
-        if (mentions.map(m => m.begin).contains(mod)) {
-          protein = mentions.filter(m => m.begin == mod).head.label
+        val mentionsFiltered = mentions.filter(m => m.begin <= mod && m.end > mod)
+        if (mentionsFiltered.size > 0) {
+          protein = mentionsFiltered.head.label
           distance = dist
           found = true
         }
@@ -146,12 +128,8 @@ object Features {
 
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
-    feats += FeatureKey("first trigger word length", List(token.word, y)) -> token.word.size
+    feats += FeatureKey("first trigger word length", List(token.word.size.toString, y)) -> 1.0
     feats += FeatureKey("first trigger word pos", List(token.pos, y)) -> 1.0
-
-    feats += FeatureKey("is upper case", List(containUpperCase(token.word).toString, y)) -> 1.0
-    feats += FeatureKey("is digit", List(containDigit(token.word).toString, y)) -> 1.0
-
 
     if (begin > 0) {
       val before = thisSentence.tokens(begin-1)
@@ -207,6 +185,7 @@ object Features {
     feats.toMap
   }
 
+
   def myArgumentFeatures(x: Candidate, y: Label): FeatureVector = {
     val doc = x.doc
     val begin = x.begin
@@ -229,6 +208,92 @@ object Features {
 //    if (!x.isProtein) {
 //      feats += FeatureKey("first destination word pos", List(token.pos, y)) -> 1.0
 //    }
+
+    val depsFrom = thisSentence.deps.filter(d => {
+      (d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)
+    }).map(d => d.label)
+    depsFrom.foreach(d => {
+      feats += FeatureKey("dependency from destination to source", List(d, y)) -> 1.0
+    })
+    feats += FeatureKey("dependency d-s aggregated", List(depsFrom.size.toString, y)) -> 1.0
+
+    val depsTo = thisSentence.deps.filter(d => {
+      (d.head >= event.begin && d.head <= event.end && d.mod >= begin && d.mod < end)
+    }).map(d => d.label)
+    depsTo.foreach(d => {
+      feats += FeatureKey("dependency from source to destination", List(d, y)) -> 1.0
+    })
+    feats += FeatureKey("dependency s-d aggregated", List(depsTo.size.toString, y)) -> 1.0
+
+    //distance from the source to destination
+    val distance = begin - event.begin
+    feats += FeatureKey("distance between source and destination", List(distance.toString, y)) -> 1.0
+
+    //bigram near destination
+    if (begin > 0) {
+      val before = thisSentence.tokens(begin - 1)
+      feats += FeatureKey("bigram before destination", List(before.word, thisSentence.tokens(begin).word, y)) -> 1.0
+      feats += FeatureKey("unigram before destination", List(before.word, y)) -> 1.0
+    }
+    if (end  < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(end)
+      feats += FeatureKey("bigram after destination", List(next.word, thisSentence.tokens(end-1).word, y)) -> 1.0
+      feats += FeatureKey("unigram after destination", List(next.word, y)) -> 1.0
+    }
+    // bigram near source
+    if (event.begin > 0) {
+      val before = thisSentence.tokens(event.begin - 1)
+      feats += FeatureKey("bigram before source", List(before.word, eventHeadToken.word, y)) -> 1.0
+      feats += FeatureKey("unigram before source", List(before.word, y)) -> 1.0
+    }
+    if (event.end < thisSentence.tokens.size) {
+      val next = thisSentence.tokens(event.end)
+      feats += FeatureKey("bigram after source", List(next.word, thisSentence.tokens(event.end - 1).word, y)) -> 1.0
+      feats += FeatureKey("unigram after source", List(next.word, y)) -> 1.0
+    }
+
+    //try to consider number of proteins
+    val mentions = thisSentence.mentions.filter(m => {
+      val start = Math.min(begin, event.begin)
+      val stop = Math.max(end, event.end)
+      (m.begin >= start && m.begin < stop) && (m.end >= event.begin && m.end < stop)
+    }).map(m => m.label)
+    feats += FeatureKey("number of mentions in sentence", List(mentions.size + y)) -> 1.0
+
+    val dependencyGraph = buildDependencyGraph(thisSentence.tokens.size, thisSentence.deps)
+    val pathDestToProtein = shortestPathToProtein(begin, end, dependencyGraph, thisSentence.mentions)
+    feats += FeatureKey("shortest path from destination to protein",
+      List(pathDestToProtein._1, pathDestToProtein._2.toString, y)) -> 1.0
+
+    val pathSourceToProtein = shortestPathToProtein(event.begin, event.end, dependencyGraph, thisSentence.mentions)
+    feats += FeatureKey("shortest path from source to protein",
+      List(pathSourceToProtein._1, pathSourceToProtein._2.toString, y)) -> 1.0
+
+    feats.toMap
+  }
+
+  def myArgumentFeaturesBeta(x: Candidate, y: Label): FeatureVector = {
+    val doc = x.doc
+    val begin = x.begin
+    val end = x.end
+    val thisSentence = doc.sentences(x.sentenceIndex)
+    val event = thisSentence.events(x.parentIndex) //use this to gain access to the parent event
+    val eventHeadToken = thisSentence.tokens(event.begin) //first token of event
+
+    val eventEnd = (begin + end) / 2
+    val eventEndToken = thisSentence.tokens(eventEnd) // the "destination" of the argument
+
+    val feats = new mutable.HashMap[FeatureKey,Double]
+    feats += FeatureKey("label bias", List(y)) -> 1.0
+    val token = thisSentence.tokens(begin) //first word of argument
+
+    feats += FeatureKey("first destination word", List(token.word, y)) -> 1.0
+    feats += FeatureKey("is destination a protein", List(x.isProtein.toString, y)) -> 1.0
+    //feats += FeatureKey("is source a protein", List(event.isProtein.toString, y)) -> 1.0
+
+    //    if (!x.isProtein) {
+    //      feats += FeatureKey("first destination word pos", List(token.pos, y)) -> 1.0
+    //    }
 
     val depsFrom = thisSentence.deps.filter(d => {
       (d.head >= begin && d.head < end && d.mod >= event.begin && d.mod < event.end)

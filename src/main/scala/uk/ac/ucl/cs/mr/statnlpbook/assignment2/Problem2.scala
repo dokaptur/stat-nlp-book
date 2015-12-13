@@ -29,7 +29,8 @@ object Problem2 {
 
     var counter = 1
     for (i <- 0 until iterations) {
-      for (inst <- instances) {
+      val instancesShuffled = scala.util.Random.shuffle(instances)
+      for (inst <- instancesShuffled) {
         val result = predict(inst._1, weights)
         if (!result.equals(inst._2)) {
           val trueFeatures = feat(inst._1, inst._2)
