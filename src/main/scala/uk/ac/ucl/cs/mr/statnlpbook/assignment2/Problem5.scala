@@ -16,7 +16,7 @@ object Problem5{
 
     // load train and dev data
     // read the specification of the method to load more/less data for debugging speedup
-    val (trainDocs, devDocs) = BioNLP.getTrainDevDocuments(train_dir,0.8,500)
+    val (trainDocs, devDocs) = BioNLP.getTrainDevDocuments(train_dir,0.8,1000)
     // load test
     val testDocs = BioNLP.getTestDocuments(test_dir)
     // make tuples (Candidate,Gold)
@@ -51,10 +51,10 @@ object Problem5{
     //TODO: change the features function to explore different types of features
     //TODO: experiment with the unconstrained and constrained (you need to implement the inner search) models
     //val jointModel = JointUnconstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
-    val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
+    val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.myTriggerFeatures,Features.myArgumentFeatures)
 
     // use training algorithm to get weights of model
-    val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,2)
+    val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,10)
 
     // get predictions on dev
     val jointDevPred = jointDev.unzip._1.map { case e => jointModel.predict(e,jointWeights) }
@@ -129,7 +129,7 @@ case class JointConstrainedClassifier(triggerLabels:Set[Label],
     }
     else {
       val firstThemeArguments = argmaxTheme(x, weights, argumentFeature)
-      argumentLabels.-(new Label ("Cause"))
+      //argumentLabels.-(new Label ("Cause"))
       val bestArguments = for (arg <- x.arguments) yield
       {if (arg==firstThemeArguments) {new Label("Theme")}
       else argmax(argumentLabels, arg, weights, argumentFeature)}
