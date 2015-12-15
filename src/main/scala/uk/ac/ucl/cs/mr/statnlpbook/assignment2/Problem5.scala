@@ -136,7 +136,7 @@ case class JointConstrainedClassifier(triggerLabels:Set[Label],
     //exclude "Cause" from Argument Labels
     val argLabelsNoCause = argumentLabels.filter(l => !l.equals("Cause"))
     // get set of all regulation trigger Labels
-    val regulationTriggerLabels = Set("Regulation")
+    val regulationTriggerLabels = Set("Regulation", "Negative_regulation", "Positive_regulation")
 
     //find best labels for rest of arguments, sum score
     val bestArgLabels = argsNoTheme.map(a => a -> argmax(argumentLabels, a, weights, argumentFeature))
