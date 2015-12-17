@@ -54,7 +54,7 @@ object Problem5{
     val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.myTriggerFeatures,Features.myArgumentFeatures)
 
     // use training algorithm to get weights of model
-    val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,10)
+    val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,5)
 
     // get predictions on dev
     val jointDevPred = jointDev.unzip._1.map { case e => jointModel.predict(e,jointWeights) }
@@ -121,6 +121,7 @@ case class JointConstrainedClassifier(triggerLabels:Set[Label],
     }
 
     def reproduceArgLabels(argumentSeq: Seq[Candidate], labelsMap: Map[Candidate, Label], themeArg: Candidate) = {
+
       val argLabels = for (a <- argumentSeq ) yield {
         labelsMap.getOrElse(a, "Theme")
       }
@@ -160,14 +161,14 @@ case class JointConstrainedClassifier(triggerLabels:Set[Label],
     val (bestNonNoneTriggerLabel, bestNonNoneTriggerScore) = triggerResults.filter(!_._1.equals("None")).maxBy(_._2)
     val nonNoneScore = bestNonNoneTriggerScore + themeArgScore + bestArgLabelsNoCauseScore
     scoresMap += (bestNonNoneTriggerLabel,
-      reproduceArgLabels(argsNoTheme, bestArgLabelsNoCause.map(a => a._1 -> a._2._1).toMap, themeArg)) -> nonNoneScore
+      reproduceArgLabels(x.arguments, bestArgLabelsNoCause.map(a => a._1 -> a._2._1).toMap, themeArg)) -> nonNoneScore
 
     // get results for regulation event
     val (bestRegulationTriggerLabel, bestRegulationTriggerScore) =
       triggerResults.filter(l => regulationTriggerLabels.contains(l._1)).maxBy(_._2)
     val regulationScore = bestRegulationTriggerScore + themeArgScore + bestArgLabelsScore
     scoresMap += (bestRegulationTriggerLabel,
-      reproduceArgLabels(argsNoTheme, bestArgLabels.map(a => a._1 -> a._2._1).toMap, themeArg)) -> regulationScore
+      reproduceArgLabels(x.arguments, bestArgLabels.map(a => a._1 -> a._2._1).toMap, themeArg)) -> regulationScore
 
     scoresMap.toMap.maxBy(_._2)._1
 
