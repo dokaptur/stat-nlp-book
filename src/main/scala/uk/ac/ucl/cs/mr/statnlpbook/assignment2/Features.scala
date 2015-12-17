@@ -124,7 +124,7 @@ object Features {
     val end = x.end
     val thisSentence = doc.sentences(x.sentenceIndex) //use this to gain access to the parent sentence
     val feats = new mutable.HashMap[FeatureKey,Double]
-    feats += FeatureKey("label bias", List(y)) -> 1.0 //bias feature
+    feats += FeatureKey("label bias trigger", List(y)) -> 1.0 //bias feature
 
     val token = thisSentence.tokens(begin) //first token of Trigger
     feats += FeatureKey("first trigger word", List(token.word, y)) -> 1.0 //word feature
@@ -195,7 +195,7 @@ object Features {
     val eventHeadToken = thisSentence.tokens(event.begin) //first token of event
 
     val feats = new mutable.HashMap[FeatureKey,Double]
-    feats += FeatureKey("label bias", List(y)) -> 1.0
+    feats += FeatureKey("label bias features", List(y)) -> 1.0
     val token = thisSentence.tokens(begin) //first word of argument
 
     feats += FeatureKey("first source word", List(eventHeadToken.word, y)) -> 1.0
