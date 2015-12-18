@@ -100,6 +100,22 @@ case class Document(txt: String, sentences: List[Sentence], fileName:String, rng
     allJoint.filter{e=>e.arguments.length>0}
   }
 
+  /**
+    * Load all event (triggers with arguments) candidates for joint classification
+    * @param triggerThreshold 0.02 is a good value, set to 1.0 for no subsampling
+    * @param argumentThreshold 0.4 is a good value, set to 1.0 for no subsampling
+    * @return list of event candidates
+    */
+  def jointCandidates_p6(triggerThreshold:Double=1.0,argumentThreshold:Double=1.0) = {
+    val allJoint = sentences.flatMap(_.events.zipWithIndex.collect{
+      case (e,idx) if (subsample(triggerThreshold)(e)) =>
+        e.copy(doc = this, arguments = e.arguments.collect {
+          case arg if subsample(if (e.gold == "None") argumentThreshold else triggerThreshold * argumentThreshold)(arg) => arg.copy(doc = this, parentIndex = idx)
+        })
+    })
+    allJoint.filter{e=>e.arguments.length>0}
+  }
+
   private def subsample(threshold: Double)(x:Candidate) = if (x.gold=="None") rng.nextDouble() <= threshold else true
 }
 
