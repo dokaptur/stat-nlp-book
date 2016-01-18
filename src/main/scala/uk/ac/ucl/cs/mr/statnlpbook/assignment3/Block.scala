@@ -202,10 +202,10 @@ case class Sigmoid(arg: Block[Double]) extends Block[Double] {
  * @param target the target value (1.0 positive sentiment, 0.0 negative sentiment)
  */
 case class NegativeLogLikelihoodLoss(arg: Block[Double], target: Double) extends Loss {
-  def forward(): Double = ???
+  def forward(): Double = -target*log(arg.forward())+(1-target)*log(1-arg.forward())
   //loss functions are root nodes so they don't have upstream gradients
   def backward(gradient: Double): Unit = backward()
-  def backward(): Unit = ???
+  def backward(): Unit = arg.backward(-target/arg.forward()-(1-target)/(1-arg.forward()))
   def update(learningRate: Double): Unit = ???
 }
 
