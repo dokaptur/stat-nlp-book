@@ -50,11 +50,11 @@ object Problem5{
     // define model
     //TODO: change the features function to explore different types of features
     //TODO: experiment with the unconstrained and constrained (you need to implement the inner search) models
-    //val jointModel = JointUnconstrainedClassifier(triggerLabels,argumentLabels,Features.defaultTriggerFeatures,Features.defaultArgumentFeatures)
+    //val jointModel = JointUnconstrainedClassifier(triggerLabels,argumentLabels,Features.myTriggerFeatures,Features.myArgumentFeatures)
     val jointModel = JointConstrainedClassifier(triggerLabels,argumentLabels,Features.myTriggerFeatures,Features.myArgumentFeatures)
 
     // use training algorithm to get weights of model
-    val jointWeights = PrecompiledTrainers.trainPerceptron(jointTrain,jointModel.feat,jointModel.predict,5)
+    val jointWeights = Problem2.trainAvgPerceptron(jointTrain,jointModel.feat,jointModel.predict,10)
 
     // get predictions on dev
     val jointDevPred = jointDev.unzip._1.map { case e => jointModel.predict(e,jointWeights) }

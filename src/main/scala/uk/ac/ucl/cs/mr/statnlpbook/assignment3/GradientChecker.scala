@@ -54,7 +54,8 @@ object GradientChecker extends App {
 
     for (i <- 0 until gradient.activeSize) {
       //todo: your code goes here!
-      val gradientExpected: Double = ???
+
+      val gradientExpected: Double = (wiggledForward(i,EPSILON)-wiggledForward(i,-EPSILON))/(2*EPSILON)
 
       avgError = avgError + math.abs(gradientExpected - gradient(i))
 
