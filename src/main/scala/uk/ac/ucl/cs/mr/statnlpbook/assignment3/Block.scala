@@ -104,21 +104,27 @@ class LossSum(override val args: Loss*) extends DoubleSum(args:_*) with Loss {
  * @param clip defines range in which gradients are clipped, i.e., (-clip, clip)
  */
 case class VectorParam(dim: Int, clip: Double = 10.0) extends ParamBlock[Vector] with GaussianDefaultInitialization {
-  var param: Vector = ??? //todo: initialize using default initialization
-  val gradParam: Vector = ??? //todo: initialize with zeros
+  var param: Vector = Vector.ones(dim) map (_ => defaultInitialization()) //todo: initialize using default initialization
+  val gradParam: Vector = Vector.zeros(dim)  //todo: initialize with zeros
   /**
    * @return the current value of the vector parameter and caches it into output
    */
-  def forward(): Vector = ???
+  def forward(): Vector = {
+    return param
+  }
   /**
    * Accumulates the gradient in gradParam
    * @param gradient an upstream gradient
    */
-  def backward(gradient: Vector): Unit = ???
+  def backward(gradient: Vector): Unit = {
+    gradParam :+= gradient
+  }
   /**
    * Resets gradParam to zero
    */
-  def resetGradient(): Unit = ???
+  def resetGradient(): Unit = {
+    gradParam :*= 0
+  }
   /**
    * Updates param using the accumulated gradient. Clips the gradient to the interval (-clip, clip) before the update
    * @param learningRate learning rate used for the update
@@ -143,9 +149,15 @@ case class VectorParam(dim: Int, clip: Double = 10.0) extends ParamBlock[Vector]
  * @param args a sequence of blocks that evaluate to vectors
  */
 case class Sum(args: Seq[Block[Vector]]) extends Block[Vector] {
-  def forward(): Vector = ???
-  def backward(gradient: Vector): Unit = ???
-  def update(learningRate: Double): Unit = ???
+  def forward(): Vector = {
+    return breeze.linalg.sum(args.map(_ => forward()))
+  }
+  def backward(gradient: Vector): Unit = {
+    args.foreach(_.backward(gradient))
+  }
+  def update(learningRate: Double): Unit = {
+    args.foreach(_.update(learningRate))
+  }
 }
 
 /**
@@ -163,10 +175,20 @@ case class Dot(arg1: Block[Vector], arg2: Block[Vector]) extends Block[Double] {
  * A block representing the sigmoid of a scalar value
  * @param arg a block that evaluates to a double
  */
+
 case class Sigmoid(arg: Block[Double]) extends Block[Double] {
-  def forward(): Double = ???
-  def backward(gradient: Double): Unit = ???
-  def update(learningRate: Double): Unit = ???
+  def sigmoid(x: Double): Double = {
+    1. / (1 + Math.exp(-x))
+  }
+  def forward(): Double = {
+    sigmoid(arg.forward())
+  }
+  def backward(gradient: Double): Unit = {
+    arg.backward(gradient*sigmoid(arg.forward())*(1 -sigmoid(arg.forward())))
+  }
+  def update(learningRate: Double): Unit = {
+    arg.update(learningRate)
+  }
 }
 
 /**
