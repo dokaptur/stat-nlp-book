@@ -153,7 +153,7 @@ case class VectorParam(dim: Int, clip: Double = 10.0) extends ParamBlock[Vector]
  */
 case class Sum(args: Seq[Block[Vector]]) extends Block[Vector] {
   def forward(): Vector = {
-    output = args.map(_.forward()).sum
+    output = breeze.linalg.sum(args.map(_.forward()))
     output
   }
   def backward(gradient: Vector): Unit = args.foreach(_.backward(gradient))
@@ -166,9 +166,16 @@ case class Sum(args: Seq[Block[Vector]]) extends Block[Vector] {
  * @param arg2 right block that evaluates to a vector
  */
 case class Dot(arg1: Block[Vector], arg2: Block[Vector]) extends Block[Double] {
-  def forward(): Double = ???
-  def backward(gradient: Double): Unit = ???
-  def update(learningRate: Double): Unit = ???
+  def forward(): Double = {
+    output = arg1.forward() * arg2.forward()
+    output
+  }
+  def backward(gradient: Double): Unit = {
+    gradient * arg1.forward()
+  }
+  def update(learningRate: Double): Unit = {
+    arg2.update(learningRate)
+  }
 }
 
 /**
