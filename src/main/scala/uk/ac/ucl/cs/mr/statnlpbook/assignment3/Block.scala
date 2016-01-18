@@ -1,7 +1,7 @@
 package uk.ac.ucl.cs.mr.statnlpbook.assignment3
 
 import breeze.numerics.{log, sigmoid, tanh} //yes, you will need them ;)
-import breeze.linalg.{DenseMatrix => Matrix, DenseVector => Vector}
+import breeze.linalg.{DenseMatrix => Matrix, DenseVector => Vector, DenseMatrix}
 
 /**
  * @author rockt
@@ -104,21 +104,30 @@ class LossSum(override val args: Loss*) extends DoubleSum(args:_*) with Loss {
  * @param clip defines range in which gradients are clipped, i.e., (-clip, clip)
  */
 case class VectorParam(dim: Int, clip: Double = 10.0) extends ParamBlock[Vector] with GaussianDefaultInitialization {
-  var param: Vector = ??? //todo: initialize using default initialization
-  val gradParam: Vector = ??? //todo: initialize with zeros
+  var param: Vector = Vector.ones(dim) map (_ => defaultInitialization())//todo: initialize using default initialization
+  var gradParam: Vector = Vector.zeros(dim)//todo: initialize with zeros
   /**
    * @return the current value of the vector parameter and caches it into output
    */
-  def forward(): Vector = ???
+  def forward(): Vector = {
+    output = param
+    output
+  }
   /**
    * Accumulates the gradient in gradParam
    * @param gradient an upstream gradient
    */
-  def backward(gradient: Vector): Unit = ???
+  def backward(gradient: Vector): Unit = {
+    gradParam:+=(gradient)
+
+  }
   /**
    * Resets gradParam to zero
    */
-  def resetGradient(): Unit = ???
+  def resetGradient(): Unit = {
+    gradParam=Vector.zeros(dim)
+
+  }
   /**
    * Updates param using the accumulated gradient. Clips the gradient to the interval (-clip, clip) before the update
    * @param learningRate learning rate used for the update
@@ -143,9 +152,12 @@ case class VectorParam(dim: Int, clip: Double = 10.0) extends ParamBlock[Vector]
  * @param args a sequence of blocks that evaluate to vectors
  */
 case class Sum(args: Seq[Block[Vector]]) extends Block[Vector] {
-  def forward(): Vector = ???
-  def backward(gradient: Vector): Unit = ???
-  def update(learningRate: Double): Unit = ???
+  def forward(): Vector = {
+    output = args.map(_.forward()).sum
+    output
+  }
+  def backward(gradient: Vector): Unit = args.foreach(_.backward(gradient))
+  def update(learningRate: Double): Unit = args.foreach(_.update(learningRate))
 }
 
 /**
